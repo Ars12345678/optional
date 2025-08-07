@@ -13,7 +13,11 @@ export class MobileControls {
     this._lastLookPos = null;
 
     this.onFire = () => {};
+    this.onFireStart = () => {};
+    this.onFireEnd = () => {};
     this.onJump = () => {};
+
+    this.isFiring = false;
 
     this._bind();
   }
@@ -99,8 +103,13 @@ export class MobileControls {
     this.domOverlayEl.addEventListener('touchcancel', () => onLookEnd(), { passive: true });
 
     // Fire / Jump
-    this.fireBtnEl.addEventListener('touchstart', (e) => { this.onFire(); e.preventDefault(); }, { passive: false });
-    this.fireBtnEl.addEventListener('mousedown', (e) => { this.onFire(); e.preventDefault(); });
+    const fireDown = (e) => { this.isFiring = true; this.onFireStart(); this.onFire(); e && e.preventDefault && e.preventDefault(); };
+    const fireUp = (e) => { this.isFiring = false; this.onFireEnd(); e && e.preventDefault && e.preventDefault(); };
+
+    this.fireBtnEl.addEventListener('touchstart', fireDown, { passive: false });
+    this.fireBtnEl.addEventListener('touchend', fireUp, { passive: false });
+    this.fireBtnEl.addEventListener('mousedown', fireDown);
+    window.addEventListener('mouseup', fireUp);
 
     this.jumpBtnEl.addEventListener('touchstart', (e) => { this.onJump(); e.preventDefault(); }, { passive: false });
     this.jumpBtnEl.addEventListener('mousedown', (e) => { this.onJump(); e.preventDefault(); });

@@ -21,14 +21,12 @@ export class Player {
     this.cameraHolder.position.set(0, this.radius * 1.4, 0);
     this.group.add(this.cameraHolder);
 
-    // Physics body (use a sphere for stability)
     const shape = new CANNON.Sphere(this.radius);
     this.body = new CANNON.Body({ mass: 1.2, linearDamping: 0.1, angularDamping: 0.99 });
     this.body.addShape(shape);
     this.body.position.set(0, 2, 5);
 
     this.body.addEventListener('collide', (e) => {
-      // simple ground detection
       if (Math.abs(e.contact.ni.y) > 0.5) {
         this.canJump = true;
       }
@@ -46,17 +44,14 @@ export class Player {
     const velocity = this.body.velocity;
     const speed = this.moveSpeed;
 
-    // Desired horizontal velocity
     const targetVx = (right) * speed;
     const targetVz = (forward) * speed;
 
-    // Rotate by player yaw (group.rotation.y)
     const yaw = this.group.rotation.y;
     const sin = Math.sin(yaw), cos = Math.cos(yaw);
     const worldVx = targetVx * cos - targetVz * sin;
     const worldVz = targetVx * sin + targetVz * cos;
 
-    // Preserve Y velocity
     velocity.x = worldVx;
     velocity.z = worldVz;
   }
@@ -74,29 +69,40 @@ export class Player {
 }
 
 export class Enemy {
-  constructor({ world, scene, position }) {
-    const size = 1 + Math.random() * 0.6;
+  constructor({ world, scene, position, type = 'chaser' }) {
+    this.type = type;
+    const size = type === 'heavy' ? 1.6 : 1 + Math.random() * 0.6;
     this.size = size;
     this.isDead = false;
+    this.health = type === 'heavy' ? 140 : 60;
 
-    const geometry = new THREE.BoxGeometry(size, size, size);
-    const material = new THREE.MeshStandardMaterial({ color: 0xff8fab, metalness: 0.05, roughness: 0.85 });
+    const geometry = Enemy.sharedGeometry || (Enemy.sharedGeometry = new THREE.BoxGeometry(1,1,1));
+    const material = new THREE.MeshStandardMaterial({ color: type === 'heavy' ? 0xff6b6b : 0xff8fab, metalness: 0.05, roughness: 0.85 });
     this.mesh = new THREE.Mesh(geometry, material);
+    this.mesh.scale.set(size, size, size);
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = true;
 
     const shape = new CANNON.Box(new CANNON.Vec3(size/2, size/2, size/2));
-    this.body = new CANNON.Body({ mass: 1 });
+    this.body = new CANNON.Body({ mass: type === 'heavy' ? 2 : 1 });
     this.body.addShape(shape);
     this.body.position.set(position.x, position.y, position.z);
 
     world.addBody(this.body);
     scene.add(this.mesh);
 
-    this.body.entityRef = this; // back-reference for collision handling
+    this.body.entityRef = this;
+    this._world = world; this._scene = scene;
+  }
+
+  applyDamage(dmg) {
+    if (this.isDead) return;
+    this.health -= dmg;
+    if (this.health <= 0) this.markDead(this._world, this._scene);
   }
 
   markDead(world, scene) {
+    if (this.isDead) return;
     this.isDead = true;
     world.removeBody(this.body);
     scene.remove(this.mesh);
@@ -108,20 +114,35 @@ export class Enemy {
   }
 }
 
+export class EnemyShooter extends Enemy {
+  constructor(args) {
+    super({ ...args, type: 'shooter' });
+    this.health = 80;
+    this._lastShot = 0;
+    this.mesh.material.color.set(0xffc6ff);
+  }
+}
+
 export class Bullet {
-  constructor({ world, scene, origin, direction }) {
+  static sharedGeo = new THREE.SphereGeometry(0.12, 10, 10);
+  static sharedMatPlayer = new THREE.MeshStandardMaterial({ color: 0xffd166, emissive: 0x553300 });
+  static sharedMatEnemy = new THREE.MeshStandardMaterial({ color: 0x69db7c, emissive: 0x113311 });
+
+  constructor({ world, scene, origin, direction, faction = 'player', damage = 20, playerRef = null }) {
     this.lifetime = 2.0;
     this.age = 0;
     this.dead = false;
+    this.faction = faction;
+    this.damage = damage;
+    this.playerRef = playerRef;
 
-    const radius = 0.12;
-    const geometry = new THREE.SphereGeometry(radius, 10, 10);
-    const material = new THREE.MeshStandardMaterial({ color: 0xffd166, emissive: 0x553300 });
+    const geometry = Bullet.sharedGeo;
+    const material = faction === 'player' ? Bullet.sharedMatPlayer : Bullet.sharedMatEnemy;
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.castShadow = true;
 
-    const shape = new CANNON.Sphere(radius);
-    const speed = 30;
+    const shape = new CANNON.Sphere(0.12);
+    const speed = faction === 'player' ? 36 : 22;
     this.body = new CANNON.Body({ mass: 0.05, linearDamping: 0.01 });
     this.body.addShape(shape);
     this.body.position.set(origin.x, origin.y, origin.z);
@@ -129,8 +150,14 @@ export class Bullet {
 
     this.body.addEventListener('collide', (e) => {
       const other = e.body.entityRef;
-      if (other && other instanceof Enemy) {
-        other.markDead(this._world, this._scene);
+      if (this.faction === 'player') {
+        if (other && other instanceof Enemy) {
+          other.applyDamage(this.damage);
+        }
+      } else if (this.faction === 'enemy') {
+        if (this.playerRef && e.body === this.playerRef.body) {
+          this.playerRef.health -= this.damage;
+        }
       }
       this.dead = true;
     });
