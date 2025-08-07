@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <title>Mobile 3D Shooter</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="ui-root">
+      <div id="hud">
+        <button id="pause-btn" title="Пауза">⏸</button>
+        <div id="label-level">Уровень: <span id="level">1</span></div>
+        <div id="label-health">Здоровье: <span id="health">100</span></div>
+        <div id="label-enemies">Противники: <span id="enemies">0</span></div>
+        <div id="label-weapon">Оружие: <span id="weapon-name">Пистолет</span></div>
+      </div>
+      <div id="crosshair"></div>
+      <div id="controls">
+        <div id="move-zone"><div id="stick"></div></div>
+        <button id="fire-btn" aria-label="Стрелять">●</button>
+        <button id="jump-btn" aria-label="Прыжок">↟</button>
+        <button id="switch-weapon" aria-label="Сменить оружие">↺</button>
+      </div>
+
+      <div id="start-overlay">
+        <h1>3D Shooter</h1>
+        <p>Нажми, чтобы начать</p>
+        <button id="start-btn">Старт</button>
+        <button id="open-menu-btn">Настройки</button>
+      </div>
+
+      <div id="menu-overlay" class="hidden">
+        <div class="panel">
+          <h2>Настройки</h2>
+          <label><input type="checkbox" id="opt-bloom" checked /> Bloom</label>
+          <label><input type="checkbox" id="opt-shadows" checked /> Тени</label>
+          <label>
+            Режим камеры
+            <select id="opt-camera">
+              <option value="first">От первого лица</option>
+              <option value="third">От третьего лица</option>
+            </select>
+          </label>
+          <label>
+            Чувствительность обзора
+            <input type="range" id="opt-sens" min="0.5" max="2.5" step="0.1" value="1.0" />
+          </label>
+          <label><input type="checkbox" id="opt-autofire" /> Авто‑огонь</label>
+          <label>
+            Качество рендера
+            <select id="opt-quality">
+              <option value="low">Низкое</option>
+              <option value="med" selected>Среднее</option>
+              <option value="high">Высокое</option>
+            </select>
+          </label>
+          <div class="buttons">
+            <button id="menu-close">Закрыть</button>
+            <button id="menu-apply">Применить</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="game-over" class="hidden">
+        <h2>Игра окончена</h2>
+        <p id="final-stats"></p>
+        <button id="restart-btn">Заново</button>
+      </div>
+    </div>
+
+    <canvas id="game-canvas"></canvas>
+
+    <script type="module" src="./js/main.js"></script>
+  </body>
+</html>
